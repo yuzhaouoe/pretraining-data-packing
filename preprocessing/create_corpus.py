@@ -15,9 +15,9 @@ from utils import get_offset_path
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s %(name)s %(lineno)s: %(message)s",
     datefmt="%m/%d/%Y %H:%M:%S",
-    level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+logger.setLevel(level=logging.INFO)
 
 
 def build_offset(jsonl_path):
@@ -118,14 +118,11 @@ def group_documents(target_tokens):
     for subset_name in SUBSET_NAMES:
         subset_dump_dir = f"./data/SlimPajama-150B/{subset_name}"
         if not os.path.exists(subset_dump_dir):
-            os.mkdir(subset_dump_dir)
+            os.makedirs(subset_dump_dir)
 
         subset_target_token = target_tokens * SUBSET_WEIGHTS[subset_name]
         each_split_tokens = math.ceil(subset_target_token / SUBSET_SPLIT_NUMS[subset_name])
         each_split_tokens = [each_split_tokens * (idx + 1) for idx in range(SUBSET_SPLIT_NUMS[subset_name])]
-
-        jsonl_paths = [f"./data/SlimPajama-split/train/{subset_name}/{subset_name}_chunk{cid}_tokenized_sampled"
-                       for cid in range(1, 11)]
 
         cur_split = 0
         cur_internal_idx = 0
@@ -167,8 +164,9 @@ def group_documents(target_tokens):
                 cur_split += 1
                 cur_internal_idx = 0
                 split_dump_path = os.path.join(subset_dump_dir, f"{subset_name}_chunk{cur_split}_processed.jsonl")
-                with open(split_dump_path, "w") as fn:
-                    pass
+                if cur_split < SUBSET_SPLIT_NUMS[subset_name]:
+                    with open(split_dump_path, "w") as fn:
+                        pass
 
             tqdm_bar.set_description(
                 f"{subset_name} {cur_get_tokens / 1024 ** 3:.3f}/{subset_target_token / 1024 ** 3:.3f}B tokens."
@@ -184,6 +182,18 @@ def main():
     total_tokens = 152 * 1024 ** 3
     sample_and_pretokenize_slimpajama_train(total_tokens)
     group_documents(total_tokens)
+
+    all_files = []
+    for subset_name in SUBSET_NAMES:
+        subset_dir = f"./data/SlimPajama-150B/{subset_name}"
+        files = [os.path.join(subset_dir, f) for f in os.listdir(subset_dir) if f.endswith("_processed.jsonl")]
+        all_files.extend(files)
+
+    pool = Pool(10, initializer=tqdm.set_lock, initargs=(RLock(),))
+    pool.map(build_offset, all_files)
+    time.sleep(5)
+    pool.close()
+    pool.join()
 
 
 if __name__ == '__main__':

@@ -11,23 +11,42 @@ bash ./scripts/download_slimpajama.sh
 Decompress and split SlimPajama to subsets according to the meta-information of documents
 ```bash
 export PYTHONPATH="./"
-python ./preprocessing/split_to_subset.py
+python ./preprocessing/split_to_subsets.py
 ```
 
 Sample documents, pre-tokenize and build offset
-
 ```bash
 export PYTHONPATH="./"
 python ./preprocessing/create_corpus.py
 ```
+## Save Offline Dataset
 
-(in progress)
+### MixChunk
+```bash
+python ./save_offline_dataset.py --packing_strategy=mixchunk
+```
+
+### UniChunk
+```bash
+python ./save_offline_dataset.py --packing_strategy=unichunk
+```
+
+### BM25Chunk
 
 BM25 retrieval is based on [Retriv](https://github.com/AmenRa/retriv)
 
-Build index: ```build_bm25_index.py```
+Build index: 
+```bash
+python build_bm25_index.py
+```
 
 Retrieval strategy: ```retriv_bm25.py``` and ```retrieval_packing.py```
+
+Save BM25Chunk in one host:
+```bash
+python ./save_offline_dataset.py --packing_strategy=bm25chunk
+```
+or distribute files to different hosts and CPU cores.
 
 ## Evaluation
 

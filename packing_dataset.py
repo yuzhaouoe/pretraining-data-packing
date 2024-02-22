@@ -16,6 +16,7 @@ logging.basicConfig(
     datefmt="%m/%d/%Y %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def get_fragment_lens(chunk):
@@ -206,7 +207,10 @@ class JsonlDataset:
             if iter_in_order or (not is_train_data):
                 self.iter_order = np.arange(len(self))
             else:
-                self.iter_order = load_iter_order(name, os.path.dirname(jsonl_paths[0]))
+                rng = np.random.RandomState(123)
+                iter_order = list(range(sum(self.all_num_lines)))
+                rng.shuffle(iter_order)
+                self.iter_order = iter_order
         else:
             self.iter_order = iter_order
 

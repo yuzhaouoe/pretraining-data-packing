@@ -1,12 +1,3 @@
-# from pathlib import Path
-# #
-# # SLIMPAJAMA_DIR = Path("./data/SlimPajama-split")
-# # TRAIN_DIR = SLIMPAJAMA_DIR / "train"
-# # EVAL_DIR = SLIMPAJAMA_DIR / "validation"
-# # TEST_DIR = SLIMPAJAMA_DIR / "test"
-# OFFLINE_DATA_DIR = "./data/saved_datasets"
-# RETRIV_BM25_INDEX_DIR = "./data/retriv_index/bm25_150B"
-
 SUBSET_NAMES = [
     "RedPajamaCommonCrawl",
     "RedPajamaC4",
@@ -29,8 +20,8 @@ SUBSET_SPLIT_NUMS = {
     "RedPajamaCommonCrawl": 86,
     "RedPajamaC4": 153,
     "RedPajamaGithub": 10,
-    "RedPajamaBooks": 1,
-    "RedPajamaArxiv": 1,
+    "RedPajamaBook": 1,
+    "RedPajamaArXiv": 1,
     "RedPajamaWikipedia": 14,
     "RedPajamaStackExchange": 15,
 }

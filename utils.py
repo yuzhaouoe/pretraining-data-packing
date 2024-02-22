@@ -1,18 +1,14 @@
 import os
 import pickle
-import time
 import logging
-from tqdm import tqdm
-import mmap
 from transformers.models.llama.tokenization_llama import LlamaTokenizer
-from multiprocessing import Pool, RLock
-from project_config import *
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s %(name)s %(lineno)s: %(message)s",
     datefmt="%m/%d/%Y %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def load_pickle(path):
@@ -54,5 +50,5 @@ def load_iter_order(jsonl_name, data_dir):
     return iter_order
 
 
-def load_tokenizer(path="./llama"):
+def load_tokenizer(path="yuzhaouoe/BM25Chunk"):
     return LlamaTokenizer.from_pretrained(path)

@@ -9,7 +9,7 @@ class DefragmentConfig:
             fragments_buffer_size=2048,
             shuffle_chains=False,
             num_chains=1,
-            over_fragmented_length=16,
+            over_fragmented_length=2,
             multihop=True,
             drop_mid_fragment=False,
             retriever_path=None,

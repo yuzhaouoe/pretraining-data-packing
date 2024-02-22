@@ -36,9 +36,9 @@ import logging
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s %(name)s %(lineno)s: %(message)s",
     datefmt="%m/%d/%Y %H:%M:%S",
-    level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+logger.setLevel(level=logging.INFO)
 
 TASK_DATA_PATH = {
     "nq": {

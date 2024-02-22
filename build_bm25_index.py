@@ -7,6 +7,8 @@ from project_config import *
 
 def build_retriv_index(kwargs):
     os.environ["RETRIV_BASE_PATH"] = "./data/bm25index"
+    if not os.path.exists("./data/bm25index"):
+        os.mkdir("./data/bm25index")
     index_name = kwargs["index_name"]
     if os.path.exists(os.path.join("./data/bm25index", f"/collections/{index_name}")):
         print(f"{index_name} exists")
@@ -43,8 +45,8 @@ def multiporcess_index():
                 "file_path": file_path,
                 "index_name": f"{subset_name}_{file_idx}"
             })
-    print(f"{len(all_args)} processes")
-    pool = Pool(len(all_args))
+    print(f"{len(all_args)} files, 5 processes")
+    pool = Pool(5)
     pool.map(build_retriv_index, all_args)
     time.sleep(5)
     pool.close()

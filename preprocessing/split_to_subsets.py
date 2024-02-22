@@ -34,13 +34,13 @@ def extract_subset_data(split_name):
         zstd_files.extend([os.path.join(root, file) for file in files])
     logger.info(f"detect {len(zstd_files)} compressed files from {compressed_split_dir}.")
 
-    subset_dir = f"./data/SlimPajama-split/{split_name}"
-    if not os.path.exists(subset_dir):
-        os.mkdir(subset_dir)
+    split_dir = f"./data/SlimPajama-split/{split_name}"
+    if not os.path.exists(split_dir):
+        os.mkdir(split_dir)
 
     subset_file_path = dict()
     for subset_name in SUBSET_NAMES:
-        subset_file_path[subset_name] = os.path.join(subset_dir, f"{subset_name}.jsonl")
+        subset_file_path[subset_name] = os.path.join(split_dir, f"{subset_name}.jsonl")
         fn = open(subset_file_path[subset_name], "w")
         fn.close()
 
@@ -62,15 +62,16 @@ def extract_subset_data_train():
     for subset_name in SUBSET_NAMES:
         subset_dump_dir = f"./data/SlimPajama-split/train/{subset_name}"
         if not os.path.exists(subset_dump_dir):
-            os.mkdir(subset_dump_dir)
+            os.makedirs(subset_dump_dir)
 
     split_path = f"./data/SlimPajama-compressed/train"
-    split_chunks = [os.path.join(split_path, vci) for vci in os.listdir(split_path)]
-    for cdir in split_chunks:
-        logger.info(f"processing {cdir}")
-        files = os.listdir(cdir)
+    for cid in range(1, 11):
+        split_chunk_dir = os.path.join(split_path, f"chunk{cid}")
+        logger.info(f"processing {split_chunk_dir}")
+        files = os.listdir(split_chunk_dir)
+        # line_num = 0
         for file in tqdm(files, ncols=50):
-            file_path = os.path.join(cdir, file)
+            file_path = os.path.join(split_chunk_dir, file)
             with open(file_path, 'rb') as ifh, open("./tmpfile", 'wb') as ofh:
                 dctx.copy_stream(ifh, ofh)
             with open("./tmpfile", "rb") as fn:
@@ -82,8 +83,7 @@ def extract_subset_data_train():
                         exit(-1)
                     item["meta"] = item["meta"]["redpajama_set_name"]
                     assert item["meta"] in SUBSET_NAMES
-
-                    add_to_subset = f"./data/SlimPajama-split/train/{item['meta']}/{item['meta']}_chunk{cdir[-1]}"
+                    add_to_subset = f"./data/SlimPajama-split/train/{item['meta']}/{item['meta']}_chunk{cid}"
                     with open(add_to_subset, "a") as fout:
                         fout.write(json.dumps(item) + "\n")
 
