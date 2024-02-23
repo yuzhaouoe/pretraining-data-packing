@@ -19,12 +19,16 @@ Sample documents, pre-tokenize and build offset
 export PYTHONPATH="./"
 python ./preprocessing/create_corpus.py
 ```
+
+We split each subset to several files, defined by ```SUBSET_SPLIT_NUMS``` in ```project_config.py```. Each file is saved in ```./data/SlimPajama-150B/[subset_name]/[[subset_name]_chunk[file_idx]_processed.jsonl]```.
+
 ## Save Offline Dataset
 
 ### MixChunk
 ```bash
 python ./save_offline_dataset.py --packing_strategy=mixchunk
 ```
+The result data is saved in ```./data/offline_datasets/mixchunk```.
 
 ### UniChunk
 ```bash
@@ -39,14 +43,31 @@ Build index:
 ```bash
 python build_bm25_index.py
 ```
+It builds BM25 index for each file independently. Each index is saved in ```./data/bm25index/collections/[subset_name]_[file_idx]``` 
 
 Retrieval strategy: ```retriv_bm25.py``` and ```retrieval_packing.py```
 
-Save BM25Chunk in one host:
+Construct BM25Chunk in one host:
 ```bash
 python ./save_offline_dataset.py --packing_strategy=bm25chunk
 ```
-or distribute files to different hosts and CPU cores.
+
+
+Or construct BM25Chunk for each file by running:
+```bash
+python ./save_offline_dataset.py \
+  --packing_strategy=bm25chunk \
+  --bm25chunk_onefile \
+  --subset_name=RedPajamaWikipedia \
+  --file_idx=0
+```
+This is an example to construct BM25Chunk for one file, and we can distribute these construction tasks to different CPU cores and hosts. ```subset_name``` and its total number of split files are defined in ```project_config.py```. 
+After constructing BM25Chunk for all files, combine the data together by running:
+```text
+python ./save_offline_dataset.py --packing_strategy=bm25chunk --combine_data
+```
+
+
 
 ## Evaluation
 

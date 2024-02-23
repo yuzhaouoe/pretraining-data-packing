@@ -174,6 +174,45 @@ class AsyncDataset(IterableDataset):
         return self.iterator()
 
 
+class BlendAsyncDataset(IterableDataset):
+
+    def __init__(
+            self,
+            async_datasets: list[AsyncDataset],
+            iter_dataset_indices: list[int],
+            corpus_weights: dict = None,
+    ):
+        self.async_datasets = async_datasets
+        if len(async_datasets) > 1:
+            corpus_iter_cnt = Counter(iter_dataset_indices)
+            for cid in range(len(async_datasets)):
+                subset_name = async_datasets[cid].name
+                logger.info(f"expect: {subset_name}={corpus_weights[subset_name]:.3f}, "
+                            f"get: {corpus_iter_cnt[cid]}, {corpus_iter_cnt[cid] / len(iter_dataset_indices):.3f}")
+        self.iter_dataset_indices = iter_dataset_indices
+
+    def __iter__(self):
+        worker_id, indices = get_worker_id_and_iter_indices(self.iter_dataset_indices,
+                                                            torch.utils.data.get_worker_info())
+
+        logger.debug(f"worker {worker_id}: "
+                     f"all corpus indices = {len(self.iter_dataset_indices)}, split =  {len(indices)}")
+
+        corpus_iterators = [iter(corpus) for corpus in self.async_datasets]
+
+        for idx in indices:
+            cur_item = {"corpus_idx": idx}
+            try:
+                cur_item_inputs = next(corpus_iterators[idx])
+            except StopIteration:
+                logger.warning(f"worker {worker_id}: corpus {idx}, {self.async_datasets[idx].name} has exhausted")
+                exit(-1)
+            cur_item.update(cur_item_inputs)
+            yield cur_item
+
+        logger.info(f"worker {worker_id}: blendable async_dataset iteration ended.")
+
+
 class JsonlDataset:
     def __init__(
             self,

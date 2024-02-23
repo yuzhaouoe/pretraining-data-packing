@@ -6,7 +6,7 @@ import math
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from packing_dataset import JsonlDataset, CorpusDataset, AsyncDataset, BlendCorpusDataset
+from packing_dataset import JsonlDataset, CorpusDataset, AsyncDataset, BlendCorpusDataset, BlendAsyncDataset
 from utils import load_tokenizer
 from retrieval_packing import DefragmentConfig
 from tqdm import tqdm
@@ -54,10 +54,10 @@ def load_dataset_with_retriever(
 
 
 def create_one_file_dataset(
-        subset_name, file_idx, index_path, data_name="debug", fragments_buffer_size=4096,
-        multihop=True, shuffle_chains=False, chunk_size=8192,
-        save_batch_size=256, num_workers=18, qlen=300,
+        subset_name, file_idx, fragments_buffer_size, chunk_size, qlen, data_name,
+        multihop=True, shuffle_chains=False, save_batch_size=256, num_workers=1,
 ):
+    index_path = f"{subset_name}_{file_idx}"
     jsonl_dir = os.path.join("./data/SlimPajama-150B", subset_name)
     file_path = os.path.join(jsonl_dir, f"{subset_name}_chunk{file_idx}_processed.jsonl")
 
@@ -155,14 +155,11 @@ def combine_data(dataset_path):
                 load_batch_ids = os.listdir(chunk_dir)
                 load_batch_paths = [os.path.join(chunk_dir, batch_id) for batch_id in load_batch_ids]
 
-                # load every batch, and save to the target dir
                 for load_batch_path in load_batch_paths:
-                    # loaded_batch = torch.load(load_batch_path)
                     save_batch_dir, save_batch_path = get_batch_dir_and_path(cur_split_dir, cur_saved_batch_idx)
                     if not os.path.exists(save_batch_dir):
                         os.mkdir(save_batch_dir)
 
-                    # torch.save(loaded_batch, save_batch_path)
                     shutil.copyfile(load_batch_path, save_batch_path)
 
                     cur_saved_batch_idx += 1
@@ -176,17 +173,58 @@ def combine_data(dataset_path):
             shutil.rmtree(split_dir)
 
 
-def save_bm25chunk_dataset(buffer_size, chunk_size, data_name, qlen):
-    os.environ["RETRIV_BASE_PATH"] = "./data/bm25index"
+def blend_data(dataset_path, total_token_nums, chunk_size):
+    corpus_datasets = []
+    corpora_iter_order = []
+    total_samples = total_token_nums // chunk_size
+    for subset_idx, subset_name in enumerate(SUBSET_NAMES):
+        subset_saved_data_path = os.path.join(dataset_path, subset_name)
+        dir_nums = len(os.listdir(subset_saved_data_path))
+        subset_dataset = AsyncDataset(subset_saved_data_path, name=subset_name, dir_nums=dir_nums)
+        corpus_datasets.append(subset_dataset)
+        cur_corpus_indices = [subset_idx] * round(SUBSET_WEIGHTS[subset_name] * total_samples + 1)
+        corpora_iter_order.extend(cur_corpus_indices)
+    rng = np.random.RandomState(666)
+    rng.shuffle(corpora_iter_order)
+    corpora_iter_order = corpora_iter_order[:total_samples]
+    train_dataset = BlendAsyncDataset(corpus_datasets, corpora_iter_order, SUBSET_WEIGHTS)
+
+    save_batch_size = 256
+    target_batch_num = math.ceil(total_token_nums / (save_batch_size * chunk_size))
+    get_batch_dir_and_path = AsyncDataset.get_batch_dir_and_path
+    dataloader = DataLoader(
+        train_dataset,
+        batch_size=save_batch_size,
+        collate_fn=save_data_collator,
+        num_workers=12,
+    )
+
+    tqdm_bar = tqdm(total=target_batch_num)
+    batch_idx = 0
+    for iter_batch_idx, iter_batch_data in enumerate(dataloader):
+
+        assert len(iter_batch_data) == save_batch_size
+
+        batch_dir, batch_path = get_batch_dir_and_path(dataset_path, batch_idx)
+        if not os.path.exists(batch_dir):
+            os.mkdir(batch_dir)
+        torch.save(iter_batch_data, batch_path)
+        tqdm_bar.update(1)
+        batch_idx += 1
+
+        if batch_idx >= target_batch_num:
+            break
+
+    logger.info(f"saved {batch_idx * save_batch_size * chunk_size / 1024 ** 3:.3f}B tokens")
+
+
+def save_bm25chunk_dataset(buffer_size, chunk_size, data_name, qlen, total_token_nums):
     for subset_name in SUBSET_NAMES:
         for file_idx in range(SUBSET_SPLIT_NUMS[subset_name]):
-            index_path = f"{subset_name}_{file_idx}"
-            create_one_file_dataset(
-                subset_name, file_idx, index_path, data_name=data_name,
-                fragments_buffer_size=buffer_size, chunk_size=chunk_size,
-                save_batch_size=256, qlen=qlen
-            )
+            create_one_file_dataset(subset_name, file_idx, buffer_size, chunk_size, qlen, data_name)
+            logger.info(f"{subset_name} {file_idx} completed")
     combine_data(f"./data/offline_datasets/{data_name}")
+    blend_data(f"./data/offline_datasets/{data_name}", total_token_nums, chunk_size)
 
 
 def save_mixchunk_dataset(chunk_size, data_name, total_token_nums):
@@ -324,6 +362,12 @@ def main():
     args.add_argument("--max_query_len", type=int, default=300)
     args.add_argument("--data_name", type=str, default=None)
     args.add_argument("--total_token_nums", type=int, default=151 * 1024 ** 3)
+    args.add_argument("--retriv_base_path", type=str, default="./data/bm25index")
+    # args for constructing bm25chunk in one file
+    args.add_argument("--bm25chunk_onefile", action="store_true")
+    args.add_argument("--subset_name", type=str, default=None)
+    args.add_argument("--file_idx", type=int, default=None)
+    args.add_argument("--combine_data", action="store_true")
     args = args.parse_args()
     if args.data_name is None:
         args.data_name = args.packing_strategy
@@ -332,7 +376,17 @@ def main():
         raise FileExistsError(f"./data/offline_datasets/{args.data_name} is non-empty")
 
     if args.packing_strategy == "bm25chunk":
-        save_bm25chunk_dataset(args.buffer_size, args.chunk_size, args.data_name, args.max_query_len)
+        if args.combine_data:
+            combine_data(f"./data/offline_datasets/{args.data_name}")
+            blend_data(f"./data/offline_datasets/{args.data_name}", args.total_token_nums, args.chunk_size)
+        else:
+            os.environ["RETRIV_BASE_PATH"] = args.retriv_base_path
+            if args.bm25chunk_onefile:
+                create_one_file_dataset(args.subset_name, args.file_idx, args.buffer_size,
+                                        args.chunk_size, args.max_query_len, args.data_name)
+            else:
+                save_bm25chunk_dataset(args.buffer_size, args.chunk_size, args.data_name,
+                                       args.max_query_len, args.total_token_nums)
     elif args.packing_strategy == "mixchunk":
         save_mixchunk_dataset(args.chunk_size, args.data_name, args.total_token_nums)
     else:
