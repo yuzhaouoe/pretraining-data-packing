@@ -3,9 +3,9 @@
 ---
 This repository hosts the data and code of the paper: [Analysing The Impact of Sequence Composition on Language Model Pre-Training](https://arxiv.org/abs/2402.13991)
 
-![](https://github.com/yuzhaouoe/pretraining-data-packing/pics/random.png)
+![](https://github.com/yuzhaouoe/pretraining-data-packing/blob/main/pics/random.png)
 
-![](https://github.com/yuzhaouoe/pretraining-data-packing/pics/random.png)
+![](https://github.com/yuzhaouoe/pretraining-data-packing/blob/main/pics/bm25chunk.png)
 
 ## Data Processing
 
