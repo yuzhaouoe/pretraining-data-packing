@@ -327,7 +327,7 @@ def get_tweet_hate_prompt(input_example, demonstrations, label2str):
     prompt = ""
     for item in demonstrations:
         prompt = prompt + f"Text: {item['text'].strip()}\nLabel: {label2str[item['label']]}\n"
-    prompt = prompt + f"Text: {input_example['text'].strip()}\nLabel:"
+    prompt = prompt + f"Text: {input_example['text'].strip()} Label:"
     return prompt
 
 
