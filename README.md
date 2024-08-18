@@ -1,8 +1,7 @@
 # Analysing The Impact of Sequence Composition on Language Model Pre-Training
 
 ---
-This repository hosts the data and code of the
-paper: [Analysing The Impact of Sequence Composition on Language Model Pre-Training](https://arxiv.org/abs/2402.13991)
+This repository hosts the data and code of the paper: [Analysing The Impact of Sequence Composition on Language Model Pre-Training](https://aclanthology.org/2024.acl-long.427/)
 
 * [Data Processing](#data-processing)
     * [Download SlimPajama](#download-slimpajama)
@@ -102,6 +101,8 @@ python ./save_offline_dataset.py --packing_strategy=bm25chunk --combine_data
 
 ## Evaluation
 
+Use models from huggingface [link](https://huggingface.co/yuzhaouoe)
+
 Download datasets
 
 ```
@@ -128,6 +129,7 @@ In-context learning:
 cd ./evaluation
 bash ./icl.sh
 ```
+
 
 ## Analysis
 
@@ -156,11 +158,26 @@ Visualise the distraction proportion: ```./analysis/distraction.py```
 ## Citing
 
 ```
-@article{zhao2024analysing,
-  title={Analysing The Impact of Sequence Composition on Language Model Pre-Training},
-  author={Zhao, Yu and Qu, Yuanbin and Staniszewski, Konrad and Tworkowski, Szymon and Liu, Wei and Mi{\l}o{\'s}, Piotr and Wu, Yuxiang and Minervini, Pasquale},
-  journal={arXiv preprint arXiv:2402.13991},
-  year={2024}
+@inproceedings{zhao-etal-2024-analysing,
+    title = "Analysing The Impact of Sequence Composition on Language Model Pre-Training",
+    author = "Zhao, Yu  and
+      Qu, Yuanbin  and
+      Staniszewski, Konrad  and
+      Tworkowski, Szymon  and
+      Liu, Wei  and
+      Mi{\l}o{\'s}, Piotr  and
+      Wu, Yuxiang  and
+      Minervini, Pasquale",
+    editor = "Ku, Lun-Wei  and
+      Martins, Andre  and
+      Srikumar, Vivek",
+    booktitle = "Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)",
+    month = aug,
+    year = "2024",
+    address = "Bangkok, Thailand",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2024.acl-long.427",
+    pages = "7897--7912",
 }
 ```
 
